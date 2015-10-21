@@ -1,0 +1,15 @@
+{
+  "name": "protractor-retry",
+  "version": "0.0.1",
+  "description": "Auto-retry for failed protractor tests based upon the grep functionality of Jasmine 2",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "compeople AG",
+  "license": "Apache 2.0",
+  "dependencies": {
+    "color": "^0.10.1",
+    "yargs": "^3.27.0"
+  }
+}
