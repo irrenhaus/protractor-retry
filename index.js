@@ -216,7 +216,7 @@ function installJasmineSpecFilter() {
             }
         }
 
-        console.log('protractor-retry: Removing spec ' + spec.getFullName() + ' from the list of active specs');
+        // console.log('protractor-retry: Removing spec ' + spec.getFullName() + ' from the list of active specs');
 
         return false;
     };
