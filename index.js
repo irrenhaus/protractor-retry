@@ -4,11 +4,11 @@ require('colors');
 var spawn = require('child_process').spawn;
 var path = require('path');
 var fs = require('fs');
-var sys = require('sys');
 var Q = require('q');
 
-var argv = require('yargs')
-            .usage('Usage: $0 [-p|--protractor-bin PATH(node_modules/protractor/bin/protractor)] [-t|--timeout SECONDS(0)] [-r|--retry-pause SECONDS(0)] [-m|--max-retries NUM(3)] [-v|--verbose [-v|--verbose]] -- your.js --protractor --args')
+var yargs = require('yargs');
+var argv = yargs
+            .usage('Usage: $0 [-h|--help] [-p|--protractor-bin] [-t|--timeout] [-r|--retry-pause] [-m|--max-retries] [-v|--verbose [-v|--verbose]] -- your.js --protractor --args')
             .alias('p', 'protractor-bin')
             .default('protractor-bin', 'node_modules/protractor/bin/protractor')
             .count('verbose')
@@ -20,11 +20,18 @@ var argv = require('yargs')
             .default('retry-pause', 0)
             .alias('m', 'max-retries')
             .default('max-retries', 3)
+            .help('help')
+            .alias('h', 'help')
             .argv;
 
 var LOG_LEVEL = argv.verbose;
 var PROTRACTOR_BIN = path.resolve(argv['protractor-bin']);
 var RETRY_FILE = path.resolve('.protractor-retry-specs');
+
+if(argv._.length <= 0) {
+    console.log(yargs.help());
+    process.exit(4);
+}
 
 function DEBUG() { if(LOG_LEVEL < 2) return; for(var i = 0; i < arguments.length; i++) { console.log('DEBUG\t'.cyan, arguments[i].toString()); } }
 function INFO() { if(LOG_LEVEL < 1) return; for(var i = 0; i < arguments.length; i++) { console.log('INFO\t'.green, arguments[i].toString()); } }
@@ -88,7 +95,7 @@ function parseOutput(stdout, stderr) {
 function runProtractor() {
     if(!fs.existsSync(PROTRACTOR_BIN)) {
         ERROR('Could not find protractor binary at "' + PROTRACTOR_BIN + '"');
-        sys.exit(1);
+        process.exit(1);
         return;
     }
 
@@ -146,7 +153,7 @@ function runTests() {
         ERROR('Maximum number of retries (' + argv['max-retries'] + ') exceeded without success');
         DEBUG('Deleting ' + RETRY_FILE);
         fs.unlinkSync(RETRY_FILE);
-        sys.exit(2);
+        process.exit(2);
     }
 
     INFO('Doing Protractor run #' + (argv['max-retries'] - maxRetries));
@@ -180,7 +187,7 @@ function runTests() {
         ERROR(err.stack);
         DEBUG('Deleting ' + RETRY_FILE);
         fs.unlinkSync(RETRY_FILE);
-        sys.exit(3);
+        process.exit(3);
     });
 }
 
@@ -205,7 +212,6 @@ function installJasmineSpecFilter() {
 
         for(var i = 0; i < retrySpecs.length; i++) {
             if(retrySpecs[i].toLowerCase() === spec.getFullName().toLowerCase()) {
-                console.log('Found filtered spec ' + spec.getFullName() + '. Allowing by original filter.');
                 return originalFilter ? originalFilter(spec) : true;
             }
         }
