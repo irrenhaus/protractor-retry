@@ -159,6 +159,8 @@ function runTests() {
 
         if(failedSpecs.length === 0) {
             DEBUG('No failed specs found, Protractor run was successfull');
+            DEBUG('Deleting ' + RETRY_FILE);
+            fs.unlinkSync(RETRY_FILE);
             return;
         }
 
