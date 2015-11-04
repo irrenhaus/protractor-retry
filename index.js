@@ -170,7 +170,7 @@ function runTests() {
     if(filter && filter.prerun) {
         INFO('Running pre-run filter');
         var res = filter.prerun(nextRun);
-        if(res.then) {
+        if(res && res.then) {
             prerunPromise = res;
         } else {
             prerunPromise = Q.when(res);
@@ -191,7 +191,7 @@ function runTests() {
         if(filter && filter.postrun) {
             INFO('Running post-run filter');
             var res = filter.postrun(nextRun, failedSpecs);
-            if(res.then) {
+            if(res && res.then) {
                 postrunPromise = res;
             } else {
                 postrunPromise = Q.when(res);
