@@ -214,7 +214,7 @@ function runTests() {
             }
 
             return Q.delay(argv['retry-pause']).then(function() { return true; });
-        };
+        });
     }).then(function(retry) {
         if(retry) {
             INFO('Retrying failed specs...');
