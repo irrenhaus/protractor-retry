@@ -8,7 +8,7 @@ var Q = require('q');
 
 var yargs = require('yargs');
 var argv = yargs
-            .usage('Usage: $0 [-h|--help] [-p|--protractor-bin] [-t|--timeout] [-r|--retry-pause] [-m|--max-retries] [-v|--verbose [-v|--verbose]] -- your.js --protractor --args')
+            .usage('Usage: $0 [-h|--help] [-p|--protractor-bin] [-t|--timeout] [-r|--retry-pause] [-m|--max-retries] [-f|--filter] [-v|--verbose [-v|--verbose]] -- your.js --protractor --args')
             .alias('p', 'protractor-bin')
             .default('protractor-bin', 'node_modules/protractor/bin/protractor')
             .count('verbose')
@@ -20,6 +20,8 @@ var argv = yargs
             .default('retry-pause', 0)
             .alias('m', 'max-retries')
             .default('max-retries', 3)
+            .alias('f', 'filter')
+            .default('filter', null)
             .help('help')
             .alias('h', 'help')
             .argv;
@@ -39,6 +41,11 @@ function ERROR() { for(var i = 0; i < arguments.length; i++) { console.log('ERRO
 
 var protractorArgs = argv._.concat(['--params.isRetryRun', 'true']);
 var maxRetries = argv['max-retries'];
+
+var filter;
+if(argv.filter) {
+    filter = require(argv.filter);
+}
 
 function parseOutput(stdout, stderr) {
     var outLines = stdout.toString().trim().split('\n');
@@ -156,12 +163,24 @@ function runTests() {
         process.exit(2);
     }
 
-    INFO('Doing Protractor run #' + (argv['max-retries'] - maxRetries));
+    var nextRun = (argv['max-retries'] - maxRetries);
+
+    if(filter && filter.prerun) {
+        INFO('Running pre-run filter');
+        filter.prerun(nextRun);
+    }
+
+    INFO('Doing Protractor run #' + nextRun);
     return runProtractor().then(function(failedSpecs) {
         if(failedSpecs === null) {
             INFO('There was an error parsing the Protractor output. Retrying...');
         } else {
             INFO('Identified ' + failedSpecs.length + ' failed specs which will be retried');
+        }
+
+        if(filter && filter.postrun) {
+            INFO('Running post-run filter');
+            filter.postrun(nextRun, failedSpecs);
         }
 
         if(failedSpecs.length === 0) {
