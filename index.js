@@ -44,7 +44,7 @@ var maxRetries = argv['max-retries'];
 
 var filter;
 if(argv.filter) {
-    filter = require(argv.filter);
+    filter = require(path.resolve(argv.filter));
 }
 
 function parseOutput(stdout, stderr) {
