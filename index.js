@@ -165,24 +165,41 @@ function runTests() {
 
     var nextRun = (argv['max-retries'] - maxRetries);
 
+    var prerunPromise = Q();
+
     if(filter && filter.prerun) {
         INFO('Running pre-run filter');
-        filter.prerun(nextRun);
+        var res = filter.prerun(nextRun);
+        if(res.then) {
+            prerunPromise = res;
+        } else {
+            prerunPromise = Q.when(res);
+        }
     }
 
-    INFO('Doing Protractor run #' + nextRun);
-    return runProtractor().then(function(failedSpecs) {
+    prerunPromise.then(function(prerun) {
+        INFO('Doing Protractor run #' + nextRun);
+        return runProtractor();
+    }).then(function(failedSpecs) {
         if(failedSpecs === null) {
             INFO('There was an error parsing the Protractor output. Retrying...');
         } else {
             INFO('Identified ' + failedSpecs.length + ' failed specs which will be retried');
         }
 
+        var postrunPromise = Q();
         if(filter && filter.postrun) {
             INFO('Running post-run filter');
-            filter.postrun(nextRun, failedSpecs);
+            var res = filter.postrun(nextRun, failedSpecs);
+            if(res.then) {
+                postrunPromise = res;
+            } else {
+                postrunPromise = Q.when(res);
+            }
         }
 
+        return postrunPromise;
+    }).then(function(postrun) {
         if(failedSpecs.length === 0) {
             DEBUG('No failed specs found, Protractor run was successfull');
             DEBUG('Deleting ' + RETRY_FILE);
@@ -197,10 +214,10 @@ function runTests() {
             INFO('Waiting for ' + argv['retry-pause'] + ' seconds before the next run');
         }
 
-        return Q.delay(argv['retry-pause']).then(function() {
-            INFO('Retrying failed specs...');
-            return runTests();
-        });
+        return Q.delay(argv['retry-pause']);
+    }).then(function() {
+        INFO('Retrying failed specs...');
+        return runTests();
     }, function(err) {
         ERROR('An error was thrown');
         ERROR(err.stack);
