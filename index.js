@@ -166,7 +166,6 @@ function runTests() {
     var nextRun = (argv['max-retries'] - maxRetries);
 
     var prerunPromise = Q();
-    var failedSpecsInfo;
 
     if(filter && filter.prerun) {
         INFO('Running pre-run filter');
@@ -188,8 +187,6 @@ function runTests() {
             INFO('Identified ' + failedSpecs.length + ' failed specs which will be retried');
         }
 
-        failedSpecsInfo = failedSpecs;
-
         var postrunPromise = Q();
         if(filter && filter.postrun) {
             INFO('Running post-run filter');
@@ -201,26 +198,28 @@ function runTests() {
             }
         }
 
-        return postrunPromise;
-    }).then(function(postrun) {
-        if(failedSpecsInfo.length === 0) {
-            DEBUG('No failed specs found, Protractor run was successfull');
-            DEBUG('Deleting ' + RETRY_FILE);
-            fs.unlinkSync(RETRY_FILE);
-            return;
+        return postrunPromise.then(function(postrun) {
+            if(failedSpecs.length === 0) {
+                DEBUG('No failed specs found, Protractor run was successfull');
+                DEBUG('Deleting ' + RETRY_FILE);
+                fs.unlinkSync(RETRY_FILE);
+                return false;
+            }
+
+            DEBUG('Writing retry file at ' + RETRY_FILE);
+            fs.writeFileSync(RETRY_FILE, failedSpecs.join('\n'));
+
+            if(argv['retry-pause'] > 0) {
+                INFO('Waiting for ' + argv['retry-pause'] + ' seconds before the next run');
+            }
+
+            return Q.delay(argv['retry-pause']).then(function() { return true; });
+        };
+    }).then(function(retry) {
+        if(retry) {
+            INFO('Retrying failed specs...');
+            return runTests();
         }
-
-        DEBUG('Writing retry file at ' + RETRY_FILE);
-        fs.writeFileSync(RETRY_FILE, failedSpecsInfo.join('\n'));
-
-        if(argv['retry-pause'] > 0) {
-            INFO('Waiting for ' + argv['retry-pause'] + ' seconds before the next run');
-        }
-
-        return Q.delay(argv['retry-pause']);
-    }).then(function() {
-        INFO('Retrying failed specs...');
-        return runTests();
     }, function(err) {
         ERROR('An error was thrown');
         ERROR(err.stack);
