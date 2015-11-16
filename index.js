@@ -159,7 +159,11 @@ function runTests() {
     if(maxRetries < 0) {
         ERROR('Maximum number of retries (' + argv['max-retries'] + ') exceeded without success');
         DEBUG('Deleting ' + RETRY_FILE);
-        fs.unlinkSync(RETRY_FILE);
+        try {
+            fs.unlinkSync(RETRY_FILE);
+        } catch(e) {
+            // Ignore the error
+        }
         process.exit(2);
     }
 
@@ -202,7 +206,11 @@ function runTests() {
             if(failedSpecs.length === 0) {
                 DEBUG('No failed specs found, Protractor run was successfull');
                 DEBUG('Deleting ' + RETRY_FILE);
-                fs.unlinkSync(RETRY_FILE);
+                try {
+                    fs.unlinkSync(RETRY_FILE);
+                } catch(e) {
+                    // Ignore the error
+                }
                 return false;
             }
 
@@ -224,7 +232,11 @@ function runTests() {
         ERROR('An error was thrown');
         ERROR(err.stack);
         DEBUG('Deleting ' + RETRY_FILE);
-        fs.unlinkSync(RETRY_FILE);
+        try {
+            fs.unlinkSync(RETRY_FILE);
+        } catch(e) {
+            // Ignore the error
+        }
         process.exit(3);
     });
 }
