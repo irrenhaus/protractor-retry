@@ -1,6 +1,6 @@
 {
   "name": "protractor-retry",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Auto-retry for failed protractor tests based upon a custom spec filter",
   "main": "index.js",
   "scripts": {

@@ -273,9 +273,9 @@ module.exports = {
     runWithRetry: runTests,
     installSpecFilter: installJasmineSpecFilter,
     log: {
-        log.INFO: log.INFO,
-        log.DEBUG: log.DEBUG,
-        log.ERROR: log.ERROR
+        INFO: log.INFO,
+        DEBUG: log.DEBUG,
+        ERROR: log.ERROR
     }
 };
 
