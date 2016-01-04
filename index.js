@@ -6,6 +6,10 @@ var path = require('path');
 var fs = require('fs');
 var Q = require('q');
 
+function DEBUG() { if(LOG_LEVEL < 2) return; for(var i = 0; i < arguments.length; i++) { console.log('DEBUG\t'.cyan, arguments[i].toString()); } }
+function INFO() { if(LOG_LEVEL < 1) return; for(var i = 0; i < arguments.length; i++) { console.log('INFO\t'.green, arguments[i].toString()); } }
+function ERROR() { for(var i = 0; i < arguments.length; i++) { console.log('ERROR\t'.red, arguments[i].toString()); } }
+
 var yargs = require('yargs');
 var argv = yargs
             .usage('Usage: $0 [-h|--help] [-p|--protractor-bin] [-t|--timeout] [-r|--retry-pause] [-m|--max-retries] [-f|--filter] [-v|--verbose [-v|--verbose]] -- your.js --protractor --args')
@@ -30,14 +34,12 @@ var LOG_LEVEL = argv.verbose;
 var PROTRACTOR_BIN = path.resolve(argv['protractor-bin']);
 var RETRY_FILE = path.resolve('.protractor-retry-specs');
 
-if(argv._.length <= 0) {
-    console.log(yargs.help());
-    process.exit(4);
+if(require.main === module) {
+    if(argv._.length <= 0) {
+        console.log(yargs.help());
+        process.exit(4);
+    }
 }
-
-function DEBUG() { if(LOG_LEVEL < 2) return; for(var i = 0; i < arguments.length; i++) { console.log('DEBUG\t'.cyan, arguments[i].toString()); } }
-function INFO() { if(LOG_LEVEL < 1) return; for(var i = 0; i < arguments.length; i++) { console.log('INFO\t'.green, arguments[i].toString()); } }
-function ERROR() { for(var i = 0; i < arguments.length; i++) { console.log('ERROR\t'.red, arguments[i].toString()); } }
 
 var protractorArgs = argv._.concat(['--params.isRetryRun', 'true']);
 var maxRetries = argv['max-retries'];
