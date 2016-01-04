@@ -1,14 +1,11 @@
 'use strict';
 
-require('colors');
 var spawn = require('child_process').spawn;
 var path = require('path');
 var fs = require('fs');
 var Q = require('q');
 
-function DEBUG() { if(LOG_LEVEL < 2) return; for(var i = 0; i < arguments.length; i++) { console.log('DEBUG\t'.cyan, arguments[i].toString()); } }
-function INFO() { if(LOG_LEVEL < 1) return; for(var i = 0; i < arguments.length; i++) { console.log('INFO\t'.green, arguments[i].toString()); } }
-function ERROR() { for(var i = 0; i < arguments.length; i++) { console.log('ERROR\t'.red, arguments[i].toString()); } }
+var log = require('./log.js');
 
 var yargs = require('yargs');
 var argv = yargs
@@ -34,13 +31,6 @@ var LOG_LEVEL = argv.verbose;
 var PROTRACTOR_BIN = path.resolve(argv['protractor-bin']);
 var RETRY_FILE = path.resolve('.protractor-retry-specs');
 
-if(require.main === module) {
-    if(argv._.length <= 0) {
-        console.log(yargs.help());
-        process.exit(4);
-    }
-}
-
 var protractorArgs = argv._.concat(['--params.isRetryRun', 'true']);
 var maxRetries = argv['max-retries'];
 
@@ -60,15 +50,15 @@ function parseOutput(stdout, stderr) {
     var failedSpecs = [];
 
     if(outLines.length <= 0) {
-        ERROR('No protractor output found');
+        log.ERROR('No protractor output found');
         return null;
     }
 
     // For whatever reason there's always one empty error line...
     if(errLines.length > 1) {
-        ERROR('There were errors on STDERR');
+        log.ERROR('There were errors on STDERR');
         errLines.forEach(function(err) {
-            ERROR(err);
+            log.ERROR(err);
         });
         return null;
     }
@@ -77,13 +67,13 @@ function parseOutput(stdout, stderr) {
         var line = outLines[i].trim();
 
         if(line.match(failuresMarker)) {
-            DEBUG('Found failures marker at line ' + i + ':', line);
+            log.DEBUG('Found failures marker at line ' + i + ':', line);
 
             for(i++; i < outLines.length; i++) {
                 line = outLines[i].trim();
                 
                 if(line.match(othersMarker)) {
-                    DEBUG('Found marker stopping the failure parsing:', line);
+                    log.DEBUG('Found marker stopping the failure parsing:', line);
                     break;
                 }
 
@@ -91,7 +81,7 @@ function parseOutput(stdout, stderr) {
 
                 if(failedSpecData) {
                     var failedSpecName = failedSpecData[1];
-                    INFO('Found failed spec: "' + failedSpecName + '"');
+                    log.INFO('Found failed spec: "' + failedSpecName + '"');
                     failedSpecs.push(failedSpecName);
                 }
             }
@@ -103,7 +93,7 @@ function parseOutput(stdout, stderr) {
 
 function runProtractor() {
     if(!fs.existsSync(PROTRACTOR_BIN)) {
-        ERROR('Could not find protractor binary at "' + PROTRACTOR_BIN + '"');
+        log.ERROR('Could not find protractor binary at "' + PROTRACTOR_BIN + '"');
         process.exit(1);
         return;
     }
@@ -134,14 +124,14 @@ function runProtractor() {
     });
 
     child.on('exit', function(exitCode) {
-        INFO('Protractor is done');
-        DEBUG('Child exited with exitCode ' + exitCode);
+        log.INFO('Protractor is done');
+        log.DEBUG('Child exited with exitCode ' + exitCode);
 
         if(killTimeout) {
-            DEBUG('Clearing kill timeout');
+            log.DEBUG('Clearing kill timeout');
             clearTimeout(killTimeout);
         } else if(killTimeout === null) {
-            ERROR('Protractor runtime exceeded the timeout of ' + argv.timeout + ' seconds and had to be killed.');
+            log.ERROR('Protractor runtime exceeded the timeout of ' + argv.timeout + ' seconds and had to be killed.');
             deferred.fulfill(null);
             return;
         }
@@ -157,10 +147,15 @@ function runProtractor() {
 }
 
 function runTests() {
+    if(argv._.length <= 0) {
+        console.log(yargs.help());
+        process.exit(4);
+    }
+
     maxRetries--;
     if(maxRetries < 0) {
-        ERROR('Maximum number of retries (' + argv['max-retries'] + ') exceeded without success');
-        DEBUG('Deleting ' + RETRY_FILE);
+        log.ERROR('Maximum number of retries (' + argv['max-retries'] + ') exceeded without success');
+        log.DEBUG('Deleting ' + RETRY_FILE);
         try {
             fs.unlinkSync(RETRY_FILE);
         } catch(e) {
@@ -174,7 +169,7 @@ function runTests() {
     var prerunPromise = Q();
 
     if(filter && filter.prerun) {
-        INFO('Running pre-run filter');
+        log.INFO('Running pre-run filter');
         var res = filter.prerun(nextRun);
         if(res && res.then) {
             prerunPromise = res;
@@ -184,18 +179,18 @@ function runTests() {
     }
 
     prerunPromise.then(function(prerun) {
-        INFO('Doing Protractor run #' + nextRun);
+        log.INFO('Doing Protractor run #' + nextRun);
         return runProtractor();
     }).then(function(failedSpecs) {
         if(failedSpecs === null) {
-            INFO('There was an error parsing the Protractor output. Retrying...');
+            log.INFO('There was an error parsing the Protractor output. Retrying...');
         } else {
-            INFO('Identified ' + failedSpecs.length + ' failed specs which will be retried');
+            log.INFO('Identified ' + failedSpecs.length + ' failed specs which will be retried');
         }
 
         var postrunPromise = Q();
         if(filter && filter.postrun) {
-            INFO('Running post-run filter');
+            log.INFO('Running post-run filter');
             var res = filter.postrun(nextRun, failedSpecs);
             if(res && res.then) {
                 postrunPromise = res;
@@ -206,8 +201,8 @@ function runTests() {
 
         return postrunPromise.then(function(postrun) {
             if(failedSpecs.length === 0) {
-                DEBUG('No failed specs found, Protractor run was successfull');
-                DEBUG('Deleting ' + RETRY_FILE);
+                log.DEBUG('No failed specs found, Protractor run was successfull');
+                log.DEBUG('Deleting ' + RETRY_FILE);
                 try {
                     fs.unlinkSync(RETRY_FILE);
                 } catch(e) {
@@ -216,24 +211,24 @@ function runTests() {
                 return false;
             }
 
-            DEBUG('Writing retry file at ' + RETRY_FILE);
+            log.DEBUG('Writing retry file at ' + RETRY_FILE);
             fs.writeFileSync(RETRY_FILE, failedSpecs.join('\n'));
 
             if(argv['retry-pause'] > 0) {
-                INFO('Waiting for ' + argv['retry-pause'] + ' seconds before the next run');
+                log.INFO('Waiting for ' + argv['retry-pause'] + ' seconds before the next run');
             }
 
             return Q.delay(argv['retry-pause']).then(function() { return true; });
         });
     }).then(function(retry) {
         if(retry) {
-            INFO('Retrying failed specs...');
+            log.INFO('Retrying failed specs...');
             return runTests();
         }
     }, function(err) {
-        ERROR('An error was thrown');
-        ERROR(err.stack);
-        DEBUG('Deleting ' + RETRY_FILE);
+        log.ERROR('An error was thrown');
+        log.ERROR(err.stack);
+        log.DEBUG('Deleting ' + RETRY_FILE);
         try {
             fs.unlinkSync(RETRY_FILE);
         } catch(e) {
@@ -278,9 +273,9 @@ module.exports = {
     runWithRetry: runTests,
     installSpecFilter: installJasmineSpecFilter,
     log: {
-        INFO: INFO,
-        DEBUG: DEBUG,
-        ERROR: ERROR
+        log.INFO: log.INFO,
+        log.DEBUG: log.DEBUG,
+        log.ERROR: log.ERROR
     }
 };
 
