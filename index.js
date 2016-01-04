@@ -274,6 +274,11 @@ function installJasmineSpecFilter() {
 
 module.exports = {
     runWithRetry: runTests,
-    installSpecFilter: installJasmineSpecFilter
+    installSpecFilter: installJasmineSpecFilter,
+    log: {
+        INFO: INFO,
+        DEBUG: DEBUG,
+        ERROR: ERROR
+    }
 };
 
